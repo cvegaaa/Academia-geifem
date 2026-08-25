@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Identidad visual básica del MVP — reemplazar cuando exista marca definitiva de Academia. */
+  --color-brand-50: #f1f0ff;
+  --color-brand-100: #e4e1ff;
+  --color-brand-200: #cac4ff;
+  --color-brand-300: #a89dff;
+  --color-brand-400: #8676ff;
+  --color-brand-500: #6d54fb;
+  --color-brand-600: #5a3aec;
+  --color-brand-700: #4c2ecb;
+  --color-brand-800: #3f27a3;
+  --color-brand-900: #362483;
+
+  --color-accent-50: #fff8ea;
+  --color-accent-100: #ffedc4;
+  --color-accent-200: #ffd888;
+  --color-accent-300: #ffbe4b;
+  --color-accent-400: #ffa723;
+  --color-accent-500: #fa8c06;
+  --color-accent-600: #dd6902;
+  --color-accent-700: #b74a06;
+  --color-accent-800: #94390c;
+  --color-accent-900: #7a300d;
+
+  --color-ink: #17162b;
+  --color-ink-soft: #4b4a63;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f6fc;
+  --color-border: #e6e4f4;
+}
+
+body {
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.input {
+  @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none;
+}
+.input:focus {
+  @apply border-brand-400;
+}

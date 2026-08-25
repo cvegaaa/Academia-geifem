@@ -1,0 +1,24 @@
+name: academia
+
+services:
+  db:
+    image: postgres:18-alpine # VERIFY: confirmar tag LTS vigente de Postgres al momento del despliegue
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: academia
+      POSTGRES_PASSWORD: academia
+      POSTGRES_DB: academia
+    ports:
+      - "5433:5432"
+    volumes:
+      # postgres:18+ guarda los datos en subdirectorios versionados bajo /var/lib/postgresql,
+      # ya no en /var/lib/postgresql/data — montar ahí directo evita el error de arranque.
+      - academia_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U academia -d academia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  academia_db_data:
