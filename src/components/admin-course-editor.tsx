@@ -146,10 +146,13 @@ export function AdminCourseEditor({
               className="input"
             />
           </Field>
-          <Field label="Duración">
+          <Field label="Duración (horas, máx. 120 — tope ETDH Colombia)">
             <input
+              type="number"
+              min="0"
+              max="120"
               value={draft.duracionHoras}
-              onChange={(e) => setField("duracionHoras", e.target.value)}
+              onChange={(e) => setField("duracionHoras", Number(e.target.value) || 0)}
               className="input"
             />
           </Field>

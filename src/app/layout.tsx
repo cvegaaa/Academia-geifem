@@ -6,8 +6,10 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Academia",
-  description: "Cursos cortos y prácticos de ofimática y habilidades laborales.",
+  title: "GEIFEM Academy — Cursos online con certificado",
+  description:
+    "Cursos online prácticos de ofimática y habilidades laborales, con certificado digital verificable. Aprende Excel, Word y más a tu ritmo, sin importar tu experiencia previa.",
+  icons: { icon: "/brand/logo.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

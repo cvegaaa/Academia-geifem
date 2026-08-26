@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates, courses, enrollments, progress, units, user } from "@/lib/db/schema";
+import { sendCertificateReadyEmail } from "@/server/email";
 
 export type StepKey = "material" | "refuerzo" | "ejercicio" | "evaluacion";
 
@@ -78,6 +79,20 @@ async function issueCertificateIfMissing(enrollmentId: string): Promise<string> 
 
   const codigoVerificacion = generateCode();
   const [row] = await db.insert(certificates).values({ enrollmentId, codigoVerificacion }).returning();
+
+  const enrollment = await db.query.enrollments.findFirst({ where: eq(enrollments.id, enrollmentId) });
+  if (enrollment) {
+    const [buyer, course] = await Promise.all([
+      db.query.user.findFirst({ where: eq(user.id, enrollment.userId) }),
+      db.query.courses.findFirst({ where: eq(courses.id, enrollment.courseId) }),
+    ]);
+    if (buyer && course) {
+      sendCertificateReadyEmail(buyer.email, buyer.name, course.titulo, row.codigoVerificacion).catch((err) =>
+        console.error("No se pudo enviar el correo de certificado listo:", err),
+      );
+    }
+  }
+
   return row.codigoVerificacion;
 }
 
@@ -86,7 +101,7 @@ export interface CertificateDetail {
   fechaEmision: Date;
   estudianteNombre: string;
   cursoTitulo: string;
-  cursoDuracionHoras: string;
+  cursoDuracionHoras: number;
 }
 
 export async function getCertificateForEnrollment(enrollmentId: string): Promise<CertificateDetail | null> {

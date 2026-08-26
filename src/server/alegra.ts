@@ -47,26 +47,21 @@ export async function findOrCreateContact(input: {
   });
 }
 
-/** Extrae el primer número de un texto como "4 horas" — null si no hay ninguno. */
-function parseHoras(duracionHoras: string): number | null {
-  const match = duracionHoras.match(/\d+/);
-  return match ? Number(match[0]) : null;
-}
-
 /**
  * Descripción exigida por el negocio (no solo el nombre del curso): de qué es la formación,
- * modalidad e intensidad horaria — y valida el tope regulatorio colombiano de 120h para
- * formación no formal (ETDH) antes de facturar.
+ * modalidad e intensidad horaria. El tope regulatorio colombiano de 120h para formación no
+ * formal (ETDH) ya se valida al guardar el curso (src/server/courses.ts::saveCourse) — esta
+ * comprobación es solo una segunda barrera defensiva antes de facturar, no la principal.
  */
-function buildDescripcion(course: { titulo: string; duracionHoras: string }): string {
-  const horas = parseHoras(course.duracionHoras);
-  if (horas !== null && horas > MAX_HORAS_ETDH) {
+function buildDescripcion(course: { titulo: string; duracionHoras: number }): string {
+  if (course.duracionHoras > MAX_HORAS_ETDH) {
     throw new Error(
-      `El curso "${course.titulo}" declara ${horas}h — supera el máximo de ${MAX_HORAS_ETDH}h ` +
-        "permitido para formación no formal en Colombia. Corrige la duración del curso antes de facturar.",
+      `El curso "${course.titulo}" declara ${course.duracionHoras}h — supera el máximo de ` +
+        `${MAX_HORAS_ETDH}h permitido para formación no formal en Colombia. Corrige la duración ` +
+        "del curso antes de facturar.",
     );
   }
-  return `Formación: ${course.titulo} — Modalidad: Virtual — Intensidad horaria: ${course.duracionHoras}`;
+  return `Formación: ${course.titulo} — Modalidad: Virtual — Intensidad horaria: ${course.duracionHoras} horas`;
 }
 
 const IVA_TAX_ID = "4"; // IVA 19% en Alegra — ver arquitectura-academia § Facturación electrónica
@@ -74,7 +69,7 @@ const IVA_RATE = 0.19;
 
 export interface CreateInvoiceInput {
   contactId: string;
-  course: { titulo: string; duracionHoras: string };
+  course: { titulo: string; duracionHoras: number };
   /** Precio final en pesos que realmente pagó el estudiante (con IVA incluido). */
   precioTotal: number;
 }
@@ -114,4 +109,9 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<AlegraIn
       status: "open",
     }),
   });
+}
+
+/** Anula una factura de venta ya emitida (ej. facturas de prueba dejadas por error). */
+export async function voidInvoice(id: string): Promise<void> {
+  await alegraFetch(`/invoices/${id}/void`, { method: "POST" });
 }

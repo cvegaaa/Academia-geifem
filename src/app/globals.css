@@ -3,28 +3,30 @@
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  /* Identidad visual básica del MVP — reemplazar cuando exista marca definitiva de Academia. */
-  --color-brand-50: #f1f0ff;
-  --color-brand-100: #e4e1ff;
-  --color-brand-200: #cac4ff;
-  --color-brand-300: #a89dff;
-  --color-brand-400: #8676ff;
-  --color-brand-500: #6d54fb;
-  --color-brand-600: #5a3aec;
-  --color-brand-700: #4c2ecb;
-  --color-brand-800: #3f27a3;
-  --color-brand-900: #362483;
+  /* Identidad visual de GEIFEM Academy — azul marino + dorado, tomados directamente del logo
+     (public/brand/logo.png). brand = azul marino (color primario, hexágono/tipografía "GEIFEM"),
+     accent = dorado (tipografía "ACADEMY", detalles). */
+  --color-brand-50: #eef2f8;
+  --color-brand-100: #d7e0ee;
+  --color-brand-200: #b0c1dd;
+  --color-brand-300: #83a0c8;
+  --color-brand-400: #4f76a8;
+  --color-brand-500: #2c5384;
+  --color-brand-600: #1a3a63;
+  --color-brand-700: #142d4d;
+  --color-brand-800: #101f38;
+  --color-brand-900: #0b1626;
 
-  --color-accent-50: #fff8ea;
-  --color-accent-100: #ffedc4;
-  --color-accent-200: #ffd888;
-  --color-accent-300: #ffbe4b;
-  --color-accent-400: #ffa723;
-  --color-accent-500: #fa8c06;
-  --color-accent-600: #dd6902;
-  --color-accent-700: #b74a06;
-  --color-accent-800: #94390c;
-  --color-accent-900: #7a300d;
+  --color-accent-50: #fbf6ea;
+  --color-accent-100: #f6ead0;
+  --color-accent-200: #ecd29e;
+  --color-accent-300: #ddb765;
+  --color-accent-400: #c9982e;
+  --color-accent-500: #b3841f;
+  --color-accent-600: #966d18;
+  --color-accent-700: #785815;
+  --color-accent-800: #614712;
+  --color-accent-900: #4f3a10;
 
   --color-ink: #17162b;
   --color-ink-soft: #4b4a63;

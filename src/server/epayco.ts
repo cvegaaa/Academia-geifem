@@ -31,7 +31,7 @@ export async function createCheckoutSession(input: CheckoutSessionInput): Promis
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       checkout_version: "2",
-      name: "Academia",
+      name: "GEIFEM Academy",
       description: input.description,
       currency: "COP",
       amount: input.amount,

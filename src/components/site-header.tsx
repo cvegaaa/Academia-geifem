@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { GraduationCap, ShoppingCart, User } from "lucide-react";
+import { ShoppingCart, User } from "lucide-react";
 import { useAuth, useCart } from "@/lib/store";
 
 export function SiteHeader() {
@@ -12,10 +13,8 @@ export function SiteHeader() {
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-ink">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <GraduationCap size={20} />
-          </span>
-          <span>Academia</span>
+          <Image src="/brand/logo.png" alt="GEIFEM Academy" width={36} height={36} className="rounded-lg" />
+          <span>GEIFEM Academy</span>
         </Link>
         <nav className="flex items-center gap-5 text-sm font-medium text-ink-soft">
           <Link href="/" className="hover:text-ink">

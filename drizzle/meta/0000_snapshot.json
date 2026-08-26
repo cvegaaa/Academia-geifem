@@ -1,5 +1,5 @@
 {
-  "id": "9ed2be26-6994-4c8b-9299-b338875bc751",
+  "id": "b2776c12-a698-4d1b-99cc-9b4ac84f54f2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -335,6 +335,94 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.coupons": {
+      "name": "coupons",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "usos_maximos": {
+          "name": "usos_maximos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usos_actuales": {
+          "name": "usos_actuales",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "fecha_expiracion": {
+          "name": "fecha_expiracion",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "coupons_codigo_unique": {
+          "name": "coupons_codigo_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "codigo"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "coupons_tipo_check": {
+          "name": "coupons_tipo_check",
+          "value": "\"coupons\".\"tipo\" in ('porcentaje', 'fijo')"
+        },
+        "coupons_valor_check": {
+          "name": "coupons_valor_check",
+          "value": "\"coupons\".\"valor\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.courses": {
       "name": "courses",
       "schema": "",
@@ -387,10 +475,10 @@
         },
         "duracion_horas": {
           "name": "duracion_horas",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": "''"
+          "default": 0
         },
         "estado": {
           "name": "estado",
@@ -452,6 +540,10 @@
         "courses_estado_check": {
           "name": "courses_estado_check",
           "value": "\"courses\".\"estado\" in ('borrador', 'publicado')"
+        },
+        "courses_duracion_horas_check": {
+          "name": "courses_duracion_horas_check",
+          "value": "\"courses\".\"duracion_horas\" >= 0 and \"courses\".\"duracion_horas\" <= 120"
         }
       },
       "isRLSEnabled": false
@@ -579,6 +671,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "coupon_id": {
+          "name": "coupon_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descuento_cents": {
+          "name": "descuento_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "estado": {
           "name": "estado",
           "type": "text",
@@ -613,6 +718,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payments_coupon_id_coupons_id_fk": {
+          "name": "payments_coupon_id_coupons_id_fk",
+          "tableFrom": "payments",
+          "tableTo": "coupons",
+          "columnsFrom": [
+            "coupon_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -735,25 +853,18 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "beneficiario_nombre": {
+          "name": "beneficiario_nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "criterio": {
           "name": "criterio",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "default": "''"
-        },
-        "cupos_disponibles": {
-          "name": "cupos_disponibles",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "beneficiario_user_id": {
-          "name": "beneficiario_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "course_id": {
           "name": "course_id",
@@ -765,31 +876,12 @@
           "name": "fecha_asignacion",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
           "notNull": true,
           "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "scholarships_beneficiario_user_id_user_id_fk": {
-          "name": "scholarships_beneficiario_user_id_user_id_fk",
-          "tableFrom": "scholarships",
-          "tableTo": "user",
-          "columnsFrom": [
-            "beneficiario_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "scholarships_course_id_courses_id_fk": {
           "name": "scholarships_course_id_courses_id_fk",
           "tableFrom": "scholarships",
@@ -931,6 +1023,52 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.testimonials": {
+      "name": "testimonials",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rol": {
+          "name": "rol",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "texto": {
+          "name": "texto",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1163,7 +1301,7 @@
       "checkConstraints": {
         "user_role_check": {
           "name": "user_role_check",
-          "value": "\"user\".\"role\" in ('admin', 'instructor', 'estudiante')"
+          "value": "\"user\".\"role\" in ('superadmin', 'admin', 'instructor', 'estudiante')"
         },
         "user_identification_type_check": {
           "name": "user_identification_type_check",

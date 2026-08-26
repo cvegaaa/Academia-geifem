@@ -13,6 +13,12 @@ export const user = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     name: text("name").notNull(),
     image: text("image"),
+    // superadmin: mismos permisos que admin hoy + a futuro (fase 2) crear/administrar
+    // organizaciones cuando la plataforma se venda a terceros que quieran sus propias
+    // capacitaciones white-label. No hay tabla de organizaciones todavía — es un rol reservado,
+    // sin funcionalidad propia adicional por ahora. instructor: definido en el plan original
+    // (crea/edita contenido, sin acceso a pagos/becas) pero sin gating propio implementado
+    // todavía — nada lo usa hoy.
     role: text("role").notNull().default("estudiante"),
     // Documento de identidad — obligatorio antes de poder facturar en Alegra (factura
     // electrónica DIAN exige identificación del comprador). Nulo hasta que el estudiante lo
@@ -23,7 +29,7 @@ export const user = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    check("user_role_check", sql`${t.role} in ('admin', 'instructor', 'estudiante')`),
+    check("user_role_check", sql`${t.role} in ('superadmin', 'admin', 'instructor', 'estudiante')`),
     check(
       "user_identification_type_check",
       sql`${t.identificationType} is null or ${t.identificationType} in ('CC', 'NIT', 'CE', 'PA')`,
@@ -95,7 +101,10 @@ export const courses = pgTable(
     resumen: text("resumen").notNull().default(""),
     descripcion: text("descripcion").notNull().default(""),
     precioCents: integer("precio_cents").notNull().default(0),
-    duracionHoras: text("duracion_horas").notNull().default(""),
+    // Estructurado (no texto libre) para poder validar el tope regulatorio de 120h (formación
+    // no formal / ETDH en Colombia) al guardar el curso, no solo al facturar — y para mostrarla
+    // igual en catálogo, ficha, factura y certificado sin parsear texto en ningún lado.
+    duracionHoras: integer("duracion_horas").notNull().default(0),
     estado: text("estado").notNull().default("borrador"),
     // Etiquetas libres de categoría (ej. "Excel", "Habilidades blandas") — texto libre con
     // autocompletado desde las ya usadas, no una tabla de categorías separada (YAGNI: el
@@ -104,7 +113,10 @@ export const courses = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [check("courses_estado_check", sql`${t.estado} in ('borrador', 'publicado')`)],
+  (t) => [
+    check("courses_estado_check", sql`${t.estado} in ('borrador', 'publicado')`),
+    check("courses_duracion_horas_check", sql`${t.duracionHoras} >= 0 and ${t.duracionHoras} <= 120`),
+  ],
 );
 
 // Cada unidad tiene, por estructura, exactamente 1 material escrito, 1 video de refuerzo y
@@ -264,14 +276,16 @@ export const certificates = pgTable("certificates", {
   urlPdf: text("url_pdf"),
 });
 
+// Becas GEIFEM — administradas solo por superadmin (src/server/actions/require-superadmin.ts).
+// Cada fila es una beca YA otorgada (no un "cupo pendiente" separado) — el cupo disponible para
+// asignar se calcula en src/server/becas.ts a partir del % de matrículas pagas menos las ya
+// otorgadas, nunca se guarda como número aparte que pueda desincronizarse.
 export const scholarships = pgTable("scholarships", {
   id: uuid("id").primaryKey().defaultRandom(),
+  beneficiarioNombre: text("beneficiario_nombre").notNull(),
   criterio: text("criterio").notNull().default(""),
-  cuposDisponibles: integer("cupos_disponibles").notNull().default(0),
-  beneficiarioUserId: text("beneficiario_user_id").references(() => user.id, { onDelete: "set null" }),
   courseId: uuid("course_id").references(() => courses.id, { onDelete: "set null" }),
-  fechaAsignacion: timestamp("fecha_asignacion", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  fechaAsignacion: timestamp("fecha_asignacion", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Testimonios de la landing — SIEMPRE reales, escritos por el admin desde /admin. Nunca se

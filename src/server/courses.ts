@@ -174,7 +174,16 @@ export async function createDraftCourse(): Promise<Course> {
   return mapCourse(row, await sectionNameMap());
 }
 
+const MAX_HORAS_ETDH = 120; // tope regulatorio Colombia para formación no formal (ETDH)
+
 export async function saveCourse(course: Course): Promise<void> {
+  if (course.duracionHoras < 0 || course.duracionHoras > MAX_HORAS_ETDH) {
+    throw new Error(
+      `La duración debe estar entre 0 y ${MAX_HORAS_ETDH} horas — es el máximo permitido para ` +
+        "formación no formal (ETDH) en Colombia.",
+    );
+  }
+
   await db.transaction(async (tx) => {
     const [row] = await tx
       .update(courses)
@@ -265,8 +274,7 @@ export async function getContentStats(): Promise<ContentStats> {
   let totalHoras = 0;
   for (const row of rows) {
     for (const c of row.categorias) categoriasSet.add(c);
-    const match = row.duracionHoras.match(/\d+/);
-    if (match) totalHoras += Number(match[0]);
+    totalHoras += row.duracionHoras;
   }
 
   const unitRows =

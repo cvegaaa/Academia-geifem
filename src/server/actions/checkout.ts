@@ -25,7 +25,7 @@ export async function startCheckoutAction(
     const sessionId = await createCheckoutSession({
       invoice: pending.invoice,
       amount: Math.round(pending.amountCents / 100),
-      description: pending.description || "Cursos Academia",
+      description: pending.description || "Cursos GEIFEM Academy",
       email: session.user.email,
       name: session.user.name,
       confirmationUrl: `${env.BETTER_AUTH_URL}/api/webhooks/epayco`,

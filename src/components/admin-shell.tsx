@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
   CreditCard,
-  GraduationCap,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -15,6 +15,7 @@ import {
   Sparkles,
   Ticket,
   Trash2,
+  UserCog,
   Users,
 } from "lucide-react";
 import { Badge, Button, Card } from "@/components/ui";
@@ -22,29 +23,43 @@ import { AdminCourseEditor } from "@/components/admin-course-editor";
 import { AdminSectionsManager } from "@/components/admin-sections-manager";
 import { AdminTestimonialsManager } from "@/components/admin-testimonials-manager";
 import { AdminCouponsManager } from "@/components/admin-coupons-manager";
+import { AdminUsersManager } from "@/components/admin-users-manager";
+import { AdminBecasManager } from "@/components/admin-becas-manager";
 import { createCourseAction, deleteCourseAction, saveCourseAction } from "@/server/actions/courses";
 import { createSectionAction, deleteSectionAction, renameSectionAction } from "@/server/actions/sections";
 import { createTestimonialAction, deleteTestimonialAction } from "@/server/actions/testimonials";
 import { createCouponAction, deleteCouponAction, toggleCouponAction } from "@/server/actions/coupons";
+import { createStaffUserAction, deleteStaffUserAction } from "@/server/actions/users";
+import { createBecaAction, deleteBecaAction } from "@/server/actions/becas";
 import { authClient } from "@/lib/auth-client";
-import { becasStats } from "@/lib/mock-data";
 import type { EnrollmentRow, PaymentRow, ReportStats } from "@/server/admin";
 import type { Testimonial } from "@/server/testimonials";
 import type { Coupon } from "@/server/coupons";
+import type { StaffRole, StaffUser } from "@/server/users";
+import type { Beca, BecasStats } from "@/server/becas";
 import type { Course, Section } from "@/lib/types";
 import { cn, formatCOP } from "@/lib/utils";
 
-type Tab = "cursos" | "matriculas" | "pagos" | "cupones" | "becas" | "reportes" | "config";
+type Tab = "cursos" | "matriculas" | "pagos" | "cupones" | "usuarios" | "becas" | "reportes" | "config";
 
-const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: "cursos", label: "Cursos", icon: <BookOpen size={18} /> },
-  { key: "matriculas", label: "Matrículas", icon: <Users size={18} /> },
-  { key: "pagos", label: "Pagos", icon: <CreditCard size={18} /> },
-  { key: "cupones", label: "Cupones", icon: <Ticket size={18} /> },
-  { key: "becas", label: "Becas GEIFEM", icon: <Sparkles size={18} /> },
-  { key: "reportes", label: "Reportes", icon: <LayoutDashboard size={18} /> },
-  { key: "config", label: "Configuración", icon: <Settings size={18} /> },
-];
+function tabsForRole(role: string): { key: Tab; label: string; icon: React.ReactNode }[] {
+  const base: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: "cursos", label: "Cursos", icon: <BookOpen size={18} /> },
+    { key: "matriculas", label: "Matrículas", icon: <Users size={18} /> },
+    { key: "pagos", label: "Pagos", icon: <CreditCard size={18} /> },
+    { key: "cupones", label: "Cupones", icon: <Ticket size={18} /> },
+    { key: "usuarios", label: "Usuarios", icon: <UserCog size={18} /> },
+  ];
+  // Becas solo la administra superadmin — ni siquiera aparece el tab para un admin normal.
+  if (role === "superadmin") {
+    base.push({ key: "becas", label: "Becas GEIFEM", icon: <Sparkles size={18} /> });
+  }
+  base.push(
+    { key: "reportes", label: "Reportes", icon: <LayoutDashboard size={18} /> },
+    { key: "config", label: "Configuración", icon: <Settings size={18} /> },
+  );
+  return base;
+}
 
 const ESTADO_TONE: Record<string, "brand" | "accent" | "neutral"> = {
   pagado: "brand",
@@ -56,31 +71,74 @@ export function AdminShell({
   initialCourses,
   allCategories,
   initialSections,
+  userId,
   userName,
+  userRole,
   enrollments,
   payments,
   reportStats,
   initialTestimonials,
   initialCoupons,
+  initialStaff,
+  initialBecas,
+  becasStats,
 }: {
   initialCourses: Course[];
   allCategories: string[];
   initialSections: Section[];
+  userId: string;
   userName: string;
+  userRole: string;
   enrollments: EnrollmentRow[];
   payments: PaymentRow[];
   reportStats: ReportStats;
   initialTestimonials: Testimonial[];
   initialCoupons: Coupon[];
+  initialStaff: StaffUser[];
+  initialBecas: Beca[];
+  becasStats: BecasStats | null;
 }) {
+  const tabs = tabsForRole(userRole);
   const [tab, setTab] = useState<Tab>("cursos");
   const [courses, setCourses] = useState(initialCourses);
   const [sections, setSections] = useState(initialSections);
   const [testimonials, setTestimonials] = useState(initialTestimonials);
   const [coupons, setCoupons] = useState(initialCoupons);
+  const [staff, setStaff] = useState(initialStaff);
+  const [becas, setBecas] = useState(initialBecas);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  function createBeca(input: { beneficiarioNombre: string; criterio: string }) {
+    startTransition(async () => {
+      const created = await createBecaAction(input);
+      setBecas((prev) => [created, ...prev]);
+      router.refresh();
+    });
+  }
+
+  function removeBeca(id: string) {
+    startTransition(async () => {
+      await deleteBecaAction(id);
+      setBecas((prev) => prev.filter((b) => b.id !== id));
+      router.refresh();
+    });
+  }
+
+  function createStaff(input: { name: string; email: string; password: string; role: StaffRole }) {
+    startTransition(async () => {
+      const created = await createStaffUserAction(input);
+      setStaff((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+    });
+  }
+
+  function removeStaff(id: string) {
+    startTransition(async () => {
+      await deleteStaffUserAction(id);
+      setStaff((prev) => prev.filter((s) => s.id !== id));
+    });
+  }
 
   function createCoupon(input: {
     codigo: string;
@@ -180,10 +238,8 @@ export function AdminShell({
     <div className="flex min-h-screen bg-surface-muted">
       <aside className="w-64 shrink-0 border-r border-border bg-surface p-4">
         <div className="mb-6 flex items-center gap-2 px-2 font-bold text-ink">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <GraduationCap size={20} />
-          </span>
-          Academia admin
+          <Image src="/brand/logo.png" alt="GEIFEM Academy" width={36} height={36} className="rounded-xl" />
+          GEIFEM Academy admin
         </div>
         <nav className="space-y-1">
           {tabs.map((t) => (
@@ -203,6 +259,11 @@ export function AdminShell({
 
         <div className="mt-6 border-t border-border pt-4">
           <p className="truncate px-3 text-xs text-ink-soft">{userName}</p>
+          {userRole === "superadmin" && (
+            <div className="px-3 pt-1">
+              <Badge tone="accent">Superadmin</Badge>
+            </div>
+          )}
           <button
             onClick={logout}
             className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink-soft hover:bg-surface-muted"
@@ -413,6 +474,19 @@ export function AdminShell({
           </div>
         )}
 
+        {tab === "usuarios" && (
+          <div>
+            <h1 className="mb-6 text-2xl font-bold text-ink">Usuarios</h1>
+            <AdminUsersManager
+              staff={staff}
+              currentUserId={userId}
+              onCreate={createStaff}
+              onDelete={removeStaff}
+              pending={pending}
+            />
+          </div>
+        )}
+
         {tab === "reportes" && (
           <div>
             <h1 className="mb-6 text-2xl font-bold text-ink">Reportes</h1>
@@ -441,29 +515,8 @@ export function AdminShell({
           </div>
         )}
 
-        {tab === "becas" && (
-          <div>
-            <h1 className="mb-6 text-2xl font-bold text-ink">Becas GEIFEM</h1>
-            <div className="grid grid-cols-3 gap-4">
-              <Stat label="Matrículas pagas" value={becasStats.matriculasPagas} />
-              <Stat label="Becas otorgadas" value={becasStats.becasOtorgadas} />
-              <Stat label="Cupos disponibles para asignar" value={becasStats.cupoDisponible} tone="accent" />
-            </div>
-            <Card className="mt-6">
-              <p className="font-semibold text-ink">Asignar cupo disponible</p>
-              <p className="mt-1 text-sm text-ink-soft">
-                Asignación manual — el admin elige al beneficiario. Criterio: estudiantes de
-                colegios públicos aliados o primeros en lista de espera.
-              </p>
-              <div className="mt-4 flex gap-3">
-                <input
-                  placeholder="Nombre del estudiante beneficiario"
-                  className="flex-1 rounded-lg border border-border px-3 py-2 text-sm"
-                />
-                <Button variant="secondary">Asignar cupo</Button>
-              </div>
-            </Card>
-          </div>
+        {tab === "becas" && becasStats && (
+          <AdminBecasManager stats={becasStats} becas={becas} onCreate={createBeca} onDelete={removeBeca} pending={pending} />
         )}
 
         {tab === "config" && (

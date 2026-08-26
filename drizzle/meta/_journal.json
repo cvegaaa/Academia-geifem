@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1787613463070,
-      "tag": "0000_nasty_alex_power",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1787614444346,
-      "tag": "0001_nebulous_fat_cobra",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1787628065138,
-      "tag": "0002_perpetual_sebastian_shaw",
+      "when": 1787765057158,
+      "tag": "0000_bouncy_richard_fisk",
       "breakpoints": true
     }
   ]

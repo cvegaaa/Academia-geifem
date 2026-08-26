@@ -31,10 +31,29 @@ Igual al usado en `geifem-agentes` (mismo repo `Apps/`), para no introducir tool
 
 ## Roles
 
+- **Superadmin**: mismos permisos que Admin hoy (acceso total a `/admin`) más, a futuro (**fase
+  2**, no construida todavía), crear y administrar organizaciones — para cuando la plataforma se
+  venda white-label a terceros que quieran sus propias capacitaciones bajo su propia marca. Por
+  ahora es un rol reservado sin funcionalidad propia adicional: no hay tabla `organizations` ni
+  UI de gestión de orgs, solo el valor de rol y el acceso a `/admin` ya habilitados.
 - **Admin** (Vegora/GEIFEM): acceso total — contenido, pagos, configuración, becas, reportes.
-- **Instructor/Editor de contenido**: crea y edita cursos, unidades, materiales y evaluaciones.
-  Sin acceso a pagos, configuración ni becas.
+- **Instructor/Editor de contenido**: en el plan original también podía crear/editar cursos —
+  esa parte sigue sin implementar (solo admin/superadmin pueden mutar contenido, vía
+  `requireAdmin()`). Lo que sí está construido es la necesidad real que surgió en esta ronda: un
+  docente necesita poder **ver el progreso de sus estudiantes y sus resultados de evaluación**,
+  sin acceso a pagos, cupones, becas ni configuración. Panel dedicado en `/instructor` — ver más
+  abajo en Estado del proyecto.
 - **Estudiante**: compra, estudia, presenta evaluaciones, descarga certificado.
+
+`user.role` acepta `superadmin | admin | instructor | estudiante` (check constraint en
+`src/lib/db/schema.ts`). `/admin` y las Server Actions de admin (`requireAdmin()` en
+`src/server/actions/require-admin.ts`) aceptan `admin` y `superadmin` por igual — no hay todavía
+ninguna pantalla ni permiso que distinga a un superadmin de un admin normal más allá de la
+insignia "Superadmin" en la barra lateral del panel. Gestión de roles sigue siendo solo por
+script (`scripts/create-admin.ts <email> <password> [nombre] [admin|superadmin|instructor]`), no
+hay UI de gestión de usuarios/roles todavía — mismo criterio que las secciones/categorías antes
+de tener UI propia: se construye cuando haya una razón real de negocio para varias cuentas con
+roles distintos, no antes.
 
 ## Estructura de contenido (editable, sin cantidades fijas en código)
 
@@ -489,6 +508,221 @@ trabajo por construir en la dirección equivocada. Para Academia, el orden es:
       120h, `createInvoice` lanza error y no factura. Es una validación tardía (al momento de
       facturar) porque `duracionHoras` es texto libre en el admin, no un campo numérico — sería
       mejor detectarlo al crear/editar el curso, no solo al facturar; queda como mejora pendiente.
+
+- [x] **Cupones de descuento** — tabla `coupons` (`codigo` único, `tipo`: porcentaje|fijo,
+      `valor`, `activo`, `usosMaximos` nullable, `usosActuales`, `fechaExpiracion` nullable).
+      Gestión completa desde `/admin` → tab "Cupones" (`AdminCouponsManager`, crear/activar-
+      desactivar/eliminar — nunca se edita el código o el valor de uno ya creado, se desactiva y
+      se crea uno nuevo, para no alterar el historial de pagos que ya lo usaron).
+      **Validación siempre server-side** (`validateCoupon` en `src/server/coupons.ts`) — el
+      carrito solo pide una vista previa de solo lectura (`previewCouponAction`, no reserva ni
+      cuenta como uso) y `createPendingCheckout` (`src/server/checkout.ts`) vuelve a validar el
+      código al crear el checkout real, nunca confía en el descuento que mandó el cliente.
+      El descuento total se reparte proporcionalmente entre los cursos del carrito según su
+      precio (el último curso se lleva el resto del reparto para que la suma cuadre exacto pese
+      al redondeo) — `payments.montoCents` de cada curso queda ya neto, así que el monto cobrado
+      en ePayco y el que se factura en Alegra (`invoicePayment`) nunca necesitan recalcular el
+      descuento por separado. `payments.couponId` / `descuentoCents` quedan guardados para el
+      historial (`couponId` es `set null` si el cupón se borra después, pero `descuentoCents` no
+      depende de que el cupón siga existiendo). El uso (`usosActuales`) se incrementa una sola
+      vez por checkout confirmado como pagado en el webhook de ePayco — nunca por intento
+      abandonado ni una vez por curso dentro del mismo carrito. Columna "Cupón" agregada a la
+      tabla de Pagos del admin para verlo sin cruzar tablas a mano.
+      Probado en el navegador: crear cupón `PRUEBA20` (20%) desde el admin → aplicarlo en
+      `/carrito` con un curso de $35.000 → descuento de $7.000, total $28.000 correcto →
+      removerlo → código inexistente muestra el error correspondiente. Cupón de prueba
+      eliminado tras verificar.
+      **Corregido en ronda aparte:** se detectó que ninguna Server Action de admin (cursos,
+      secciones, testimonios, cupones) validaba el rol dentro de la propia acción — solo la
+      página `/admin` estaba protegida, y las Server Actions son endpoints POST alcanzables
+      directamente conociendo su ID. Ya está cerrado: `requireAdmin()`
+      (`src/server/actions/require-admin.ts`) se llama al inicio de cada acción mutadora de esos
+      4 archivos.
+
+- [x] **Rol `superadmin` agregado** — ver § Roles arriba. Cambio de esquema (migración
+      `0003_chubby_madrox.sql`), gating de `/admin` y de `requireAdmin()` actualizado para
+      aceptar `admin` o `superadmin`, `scripts/create-admin.ts` acepta el rol como argumento.
+      Sin tabla de organizaciones ni UI de multi-tenant — eso queda explícitamente para fase 2,
+      pedido así por el usuario. Probado en el navegador con una cuenta desechable
+      (`qa-superadmin@test.local`): login → `/admin` carga con la insignia "Superadmin" en la
+      barra lateral → cuenta eliminada tras verificar.
+
+- [x] **Marca real: GEIFEM Academy** — reemplaza el nombre genérico "Academia" en todo el
+      frontend visible (header, panel admin, login, certificado, verificación pública, footer,
+      nombre del comercio en ePayco y descripción del checkout). Logo real en
+      `public/brand/logo.png` (provisto por el usuario vía Google Drive). Paleta de colores
+      (`src/app/globals.css`, tokens `--color-brand-*`/`--color-accent-*`) reemplazada de
+      morado/naranja genérico a azul marino (`brand`, ej. `#1a3a63`) + dorado (`accent`, ej.
+      `#c9982e`), tomados directamente del logo — como toda la UI ya usaba esos tokens
+      (`bg-brand-600`, `bg-accent-400`, etc.) el rebranding fue un solo archivo, sin tocar
+      componente por componente. Verificado visualmente en el navegador: landing, login admin,
+      panel admin y página de verificación de certificado.
+- [x] **Duración del curso ahora es un campo estructurado (horas, entero)** — antes era texto
+      libre (`"4 horas"`) parseado con regex en dos lugares distintos (`getContentStats` y
+      `buildDescripcion` en Alegra), lo que dejaba el tope regulatorio de 120h (ETDH Colombia)
+      sin validar hasta el momento de facturar. Ahora `courses.duracionHoras` es `integer` con
+      **check constraint en la propia base de datos** (`0 <= duracionHoras <= 120`) y se valida
+      también en `saveCourse` (`src/server/courses.ts`) al guardar el curso desde el admin — el
+      chequeo en `src/server/alegra.ts::buildDescripcion` queda como segunda barrera defensiva,
+      no la principal. El admin (`AdminCourseEditor`) ahora usa un input numérico con el máximo
+      indicado en la etiqueta. Se muestra formateada ("N horas"/"Nh") en catálogo, ficha de
+      curso y — ya estaba conectado — en el certificado final. Migración `0004_clean_rage.sql`
+      (tabla estaba vacía en desarrollo, sin necesidad de convertir datos reales).
+- [x] **Legal: política de privacidad y términos de uso** — `/privacidad` adaptada directamente
+      del texto real y vigente de `geifem.com/politica-de-privacidad` (Ley 1581/2012), ajustando
+      los proveedores de datos a los que Academia realmente usa (ePayco, Alegra — no
+      WhatsApp/Chatwoot/n8n, que son de la operación general de GEIFEM) y agregando la sección de
+      menores de edad. `/terminos` fue **redactada desde cero** para Academia (no existía nada
+      equivalente en geifem.com) — objeto, registro, compra/pago, acceso al contenido,
+      certificados (aclara que son formación no formal ETDH, no título académico), becas,
+      propiedad intelectual, ley aplicable. **Ambas páginas son un primer borrador, no texto
+      legal validado por un abogado** — el usuario pidió redactarlas para revisarlas antes de
+      publicar. La cláusula de reembolsos en particular quedó marcada explícitamente en la
+      página como pendiente de que GEIFEM confirme su política real. Sección 3 de `/terminos`
+      cubre el **consentimiento de acudiente para menores de edad** como texto legal, pero **no
+      hay todavía un flujo de captura real** (ej. checkbox obligatorio en el registro) — es un
+      punto pendiente si se quiere hacerlo cumplir activamente, no solo declararlo en la página.
+      Enlazadas desde el footer de `/`.
+- [x] **Función de anulación de facturas en Alegra** — `voidInvoice(id)` en `src/server/alegra.ts`
+      (`POST /invoices/{id}/void`, confirmado contra la documentación oficial de Alegra). Se
+      escribió `scripts/void-test-invoices.ts` para anular las dos facturas de prueba reales que
+      quedaron de la ronda de integración de Alegra (`FV203`, `FV204`) — el clasificador de
+      auto-modo bloqueó la ejecución directa por ser una acción financiera real sobre la cuenta
+      de producción de GEIFEM, así que el usuario las anuló él mismo directamente en Alegra.
+      **Confirmado por el usuario: ambas ya están anuladas.** No queda nada pendiente de esta
+      ronda.
+
+- [x] **Notificaciones por correo (Resend)** — marcado como prioridad explícita por el usuario.
+      `src/server/email.ts` envuelve el SDK de Resend con tres correos: bienvenida (hook
+      `databaseHooks.user.create.after` en `src/lib/auth.ts`, dispara para cualquier alta real de
+      usuario incluida la creada por `scripts/create-admin.ts`), confirmación de pago
+      (`notifyPaymentConfirmed` en `src/server/checkout.ts`, se dispara una vez por invoice
+      confirmado, no por curso) y certificado listo (`issueCertificateIfMissing` en
+      `src/server/progress.ts`, solo en la emisión real del certificado, no en llamadas
+      idempotentes posteriores). Todos los envíos son fire-and-forget con `.catch` — un fallo de
+      correo nunca bloquea el signup, el pago ni el progreso del estudiante, mismo criterio que
+      ya existía para la facturación en Alegra.
+      **`RESEND_API_KEY` es opcional a propósito** — el usuario no tiene cuenta de Resend
+      todavía (hay que crearla y verificar un dominio). Mientras no esté configurada,
+      `src/server/email.ts` no llama a la API, solo deja un log (`[email] RESEND_API_KEY no
+      configurada — no se envió "..." a ...`) — verificado en el navegador con un signup real
+      que no rompió el flujo. En cuanto se agregue la key real a `.env`, los tres correos
+      empiezan a salir solos, sin tocar código.
+
+- [x] **Recuperación de contraseña** — flujo estándar de better-auth
+      (`emailAndPassword.sendResetPassword` en `src/lib/auth.ts`, usa
+      `sendPasswordResetEmail` de `src/server/email.ts`, mismo criterio de degradar a solo-log
+      sin `RESEND_API_KEY`). `/login` gana un tercer modo "forgot" (además de login/signup) con
+      el link "¿Olvidaste tu contraseña?" bajo el campo de contraseña — pide el correo vía
+      `authClient.requestPasswordReset({email, redirectTo})` y muestra un mensaje genérico que no
+      revela si el correo existe o no (comportamiento propio de better-auth, no algo que haya que
+      mantener a mano). Página nueva `/restablecer-contrasena` lee el `?token=` de la URL y llama
+      `authClient.resetPassword({newPassword, token})`; maneja token ausente/inválido/vencido con
+      un mensaje claro. Probado en el navegador con una cuenta real: pedir reset con correo
+      inexistente no revela nada, con correo real deja el log de correo esperado (`[email]
+      RESEND_API_KEY no configurada...`).
+- [x] **Panel docente (`/instructor`)** — gap real detectado por el usuario: un docente
+      necesita poder revisar el progreso y las evaluaciones de sus estudiantes, y no tenía cómo
+      hacerlo (el rol `instructor` existía en el esquema pero no llevaba a ningún lado). Página
+      de solo lectura, gateada a `role` en `instructor | admin | superadmin`
+      (`src/app/instructor/page.tsx`, mismo patrón de `auth.api.getSession` + redirect que
+      `/admin`) — sin Server Actions de mutación, así que no necesitó pasar por `requireAdmin()`.
+      `src/server/instructor.ts::listStudentProgress()` trae, por matrícula pagada: estudiante,
+      curso, % completado y el detalle por unidad (material/video/video vistos, evaluación
+      aprobada, puntaje). `InstructorDashboard` (`src/components/instructor-dashboard.tsx`)
+      agrupa por curso con filas expandibles por estudiante — sin acceso a pagos, cupones,
+      becas ni edición de contenido, tal como pedía el plan original para este rol.
+      `/login` ahora redirige automáticamente a `/instructor` cuando el usuario que inicia
+      sesión tiene `role === "instructor"` (salvo que venga un `next` explícito, ej. desde
+      `/carrito`) — los docentes no compran cursos, no tiene sentido mandarlos a `/cuenta`.
+      Probado en el navegador con una cuenta desechable (`qa-instructor@test.local`, creada vía
+      `scripts/create-admin.ts ... instructor`): login → redirige solo a `/instructor` → estado
+      vacío correcto (no hay matrículas reales en desarrollo) → una cuenta de estudiante normal
+      no puede acceder a la misma ruta (redirige a `/login`). Cuentas de prueba eliminadas tras
+      verificar.
+
+- [x] **Crear cuentas de staff desde el admin (sin terminal)** — decisión explícita del usuario:
+      evitar `scripts/create-admin.ts` para el uso normal, dejarlo solo como recurso de último
+      caso. Tab nuevo "Usuarios" en `/admin` (`AdminUsersManager`) con formulario
+      nombre/correo/contraseña/rol (`instructor` | `admin` | `superadmin`) y lista de las cuentas
+      con privilegios existentes (nunca estudiantes — `src/server/users.ts::listStaffUsers()`
+      filtra `role != 'estudiante'`).
+      **Bug real encontrado y corregido en el camino:** crear la cuenta llamando directo a
+      `auth.api.signUpEmail(...)` desde la Server Action habría hecho que el plugin
+      `nextCookies()` interceptara el `Set-Cookie` de esa respuesta y dejara al admin que la
+      creó **logueado como el usuario nuevo** — efecto secundario real y documentado de ese
+      plugin dentro de Server Actions, no específico de este proyecto. Se evitó haciendo un
+      fetch server-to-server al endpoint HTTP (`POST /api/auth/sign-up/email`) e ignorando a
+      propósito cualquier cookie de la respuesta (`src/server/users.ts::createStaffUser`).
+      Ese mismo fetch necesitó fijar el header `Origin: BETTER_AUTH_URL` a mano — better-auth lo
+      valida como protección CSRF y un fetch server-to-server no lo manda por defecto (se vio el
+      error real "Missing or null Origin" antes de agregarlo).
+      `deleteStaffUserAction` bloquea que un admin se borre su propia cuenta desde esta pantalla
+      (comparando contra la sesión actual, no solo ocultando el botón en el cliente).
+      Probado de punta a punta en el navegador: crear cuenta `qa-docente-panel@test.local` con
+      rol Docente desde `/admin` → aparece en la lista → **la sesión del admin que la creó sigue
+      siendo la suya** (verificado leyendo `/api/auth/get-session` después de crear) → eliminarla
+      con el botón de la propia UI la quita de la lista, sin tocar la base de datos a mano.
+
+- [x] **Hero y metadata reposicionados para no limitar el alcance SEO** — decisión explícita del
+      usuario: el copy original del hero ("Para jóvenes recién egresados de bachillerato...
+      conseguir tu primer empleo") acotaba la audiencia a un segmento demasiado angosto para el
+      posicionamiento en buscadores. Nuevo copy en `src/app/page.tsx`: badge "Cursos 100% online ·
+      Certificado incluido", H1 "Cursos cortos online de ofimática y habilidades laborales"
+      (más rico en keywords, sin excluir audiencia), párrafo que mantiene los datos reales (2-6h,
+      certificado, becas) pero agrega "a tu ritmo, sin importar tu edad o experiencia previa" en
+      vez de asumir un único perfil de estudiante. `<title>`/`<meta description>` en
+      `src/app/layout.tsx` alineados al mismo posicionamiento.
+      **Nota para una próxima ronda:** el badge "Precio accesible" (`VALOR_PROPUESTA` en
+      `src/app/page.tsx`) sigue con el texto "Pensado para el bolsillo de un joven sin ingresos
+      fijos" — mismo sesgo de audiencia angosta que el hero tenía, no se tocó en esta ronda porque
+      el usuario pidió específicamente el hero. Vale la pena revisarlo si se quiere una limpieza
+      completa del copy orientado a un solo segmento.
+
+- [x] **Eliminada la duración ("cortos"/"horas") del copy de marketing** — feedback directo del
+      usuario: enfatizar la duración corta empequeñece la percepción del producto. Quitado de:
+      badge/H1/párrafo del hero, `<title>`/meta description (`src/app/layout.tsx`), la tarjeta de
+      propuesta de valor "Corto y aplicado" (renombrada a "100% práctico", sin mencionar horas ni
+      "no carreras completas"), y el stat animado de horas totales en la sección de estadísticas
+      de la landing (quedó en 3 columnas: cursos, unidades, categorías — `totalHoras` sigue
+      calculado en `getContentStats()` por si hace falta en otro lado, solo se dejó de mostrar en
+      `/`). **Las fichas de curso individuales sí siguen mostrando su duración** (`Xh` en
+      catalog-browser, "X horas de contenido" en `/cursos/[slug]` y en el certificado) —
+      deliberadamente sin tocar, es información práctica que un comprador necesita para decidir
+      sobre un curso puntual, distinto de usar la brevedad como ángulo de marketing general.
+      La tarjeta "Precio accesible" también se corrigió a pedido del usuario: de "pensado para el
+      bolsillo de un joven sin ingresos fijos" a "Formación de calidad a un precio justo, sin las
+      barreras de una carrera tradicional" — mismo criterio de no acotar a un solo perfil de
+      estudiante. Con esto ya no queda copy de marketing en `/` sesgado a una sola audiencia.
+
+- [x] **Becas GEIFEM conectadas a datos reales, exclusivas de superadmin** — decisión explícita
+      del usuario: la gestión de becas queda solo para superadmin (ni siquiera un admin normal
+      ve el tab), y el contador público de la landing se mueve desde ahí, no desde datos de
+      mentira. El diseño original de `scholarships` (con `cuposDisponibles` por fila y
+      `beneficiarioUserId` como FK obligatoria a una cuenta real) nunca se había usado y no
+      encajaba con el flujo real (asignación manual a alguien que puede no tener cuenta
+      todavía) — se simplificó: cada fila es una beca **ya otorgada**
+      (`beneficiarioNombre` texto libre, `criterio`, `fechaAsignacion`), y el "cupo disponible"
+      ya no se guarda como número aparte que se pueda desincronizar — se calcula en
+      `src/server/becas.ts::getBecasStats()` como `floor(matrículas pagadas × 5%) − becas
+      otorgadas` (5%, la política de Fase 0-1 documentada en § Becas GEIFEM). Esto forzó otro
+      reset del historial de migraciones de Drizzle (mismo patrón ya documentado en la sección de
+      "Secciones dinámicas": DB de desarrollo deliberadamente vacía → más seguro recrear el
+      esquema base que negociar el prompt interactivo de rename ambiguo). Cuenta de superadmin
+      recreada después con `scripts/create-admin.ts` — de paso, se corrigió su rol real a
+      `superadmin` (antes estaba como `admin` porque el rol no existía cuando se creó la primera
+      vez).
+      Acceso: `requireSuperadmin()` (`src/server/actions/require-superadmin.ts`) — más estricto
+      que `requireAdmin()`, exige `role === "superadmin"` exacto, no admite `admin`. El tab
+      "Becas GEIFEM" del panel (`tabsForRole()` en `admin-shell.tsx`) directamente no se agrega a
+      la lista si el rol no es superadmin, y `admin/page.tsx` ni siquiera consulta
+      `listBecas()`/`getBecasStats()` en ese caso — la data no llega al cliente de un admin
+      normal, no es solo un tab oculto por CSS.
+      Landing (`/`) reemplaza `becasStats` (mock) por `getBecasStats()` real.
+      Probado en el navegador: superadmin ve el tab y otorga una beca → el contador de `/#becas`
+      se actualiza al instante con el dato real → una cuenta con `role: "admin"` (no superadmin)
+      inicia sesión y el tab "Becas GEIFEM" no aparece en absoluto en la barra lateral. Cuenta y
+      beca de prueba eliminadas tras verificar.
 
 **Actualizar esta sección y las anteriores a medida que se completen fases — no dejarla
 desactualizada.**

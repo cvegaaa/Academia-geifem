@@ -10,19 +10,19 @@ import { TestimonialsSection } from "@/components/testimonials-section";
 import { Badge, Button, Card } from "@/components/ui";
 import { getContentStats, getPublishedCategories, getPublishedCourses, listSections } from "@/server/courses";
 import { listTestimonials } from "@/server/testimonials";
-import { becasStats } from "@/lib/mock-data";
+import { getBecasStats } from "@/server/becas";
 import { formatCOP } from "@/lib/utils";
 
 const VALOR_PROPUESTA = [
   {
     icon: Clock,
-    titulo: "Corto y aplicado",
-    texto: "Cursos de 2 a 6 horas, con ejercicios prácticos reales — no carreras completas.",
+    titulo: "100% práctico",
+    texto: "Ejercicios reales que puedes aplicar de inmediato en tu trabajo, no solo teoría.",
   },
   {
     icon: Tag,
     titulo: "Precio accesible",
-    texto: "Pensado para el bolsillo de un joven sin ingresos fijos.",
+    texto: "Formación de calidad a un precio justo, sin las barreras de una carrera tradicional.",
   },
   {
     icon: Award,
@@ -44,12 +44,13 @@ const COMO_FUNCIONA = [
 ];
 
 export default async function CatalogoPage() {
-  const [courses, categories, sections, stats, testimonials] = await Promise.all([
+  const [courses, categories, sections, stats, testimonials, becasStats] = await Promise.all([
     getPublishedCourses(),
     getPublishedCategories(),
     listSections(),
     getContentStats(),
     listTestimonials(),
+    getBecasStats(),
   ]);
 
   const bundleSection = sections[0];
@@ -58,7 +59,6 @@ export default async function CatalogoPage() {
 
   const stats_ = [
     { icon: BookOpen, value: stats.totalCursos, label: "cursos disponibles" },
-    { icon: Clock, value: stats.totalHoras, suffix: "h", label: "de contenido práctico" },
     { icon: Layers, value: stats.totalUnidades, label: "unidades de aprendizaje" },
     { icon: Tag, value: stats.totalCategorias, label: "categorías" },
   ];
@@ -69,14 +69,15 @@ export default async function CatalogoPage() {
 
       <section className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-16 lg:grid-cols-[3fr_2fr]">
         <div className="max-w-2xl">
-          <Badge tone="accent">Para jóvenes recién egresados de bachillerato</Badge>
+          <Badge tone="accent">Cursos 100% online · Certificado incluido</Badge>
           <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-            Cursos cortos y prácticos para conseguir tu primer empleo
+            Cursos online de ofimática y habilidades laborales
           </h1>
           <p className="mt-4 text-lg text-ink-soft">
-            Ofimática y habilidades laborales, en cursos de 2 a 6 horas, con certificado incluido.
-            Cada matrícula paga sostiene además un cupo becado — la política de responsabilidad
-            social de GEIFEM.
+            Aprende Excel, Word y las habilidades que hoy piden las empresas en cursos 100%
+            prácticos, con certificado digital verificable — a tu ritmo, sin importar tu edad o
+            experiencia previa. Cada matrícula paga sostiene además un cupo becado para quien no
+            puede pagar — la política de responsabilidad social de GEIFEM.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="#catalogo">
@@ -109,12 +110,12 @@ export default async function CatalogoPage() {
       {stats.totalCursos > 0 && (
         <section className="bg-ink py-14">
           <div className="mx-auto max-w-6xl px-6">
-            <StaggerGroup className="grid grid-cols-2 gap-8 text-center lg:grid-cols-4">
-              {stats_.map(({ icon: Icon, value, suffix, label }) => (
+            <StaggerGroup className="grid grid-cols-3 gap-8 text-center">
+              {stats_.map(({ icon: Icon, value, label }) => (
                 <StaggerItem key={label}>
                   <Icon size={22} className="mx-auto text-accent-400" />
                   <p className="mt-2 text-3xl font-extrabold text-white">
-                    <AnimatedCounter value={value} suffix={suffix} />
+                    <AnimatedCounter value={value} />
                   </p>
                   <p className="mt-1 text-sm text-white/70">{label}</p>
                 </StaggerItem>
@@ -210,7 +211,15 @@ export default async function CatalogoPage() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-sm text-ink-soft">
-        <p>Academia · responsabilidad social de GEIFEM Consultoría</p>
+        <p>GEIFEM Academy · responsabilidad social de GEIFEM Consultoría</p>
+        <p className="mt-3 flex justify-center gap-4 text-xs">
+          <Link href="/terminos" className="hover:text-ink hover:underline">
+            Términos y condiciones
+          </Link>
+          <Link href="/privacidad" className="hover:text-ink hover:underline">
+            Política de privacidad
+          </Link>
+        </p>
         <p className="mt-1 text-xs">Desarrollado por Vegora</p>
       </footer>
     </div>

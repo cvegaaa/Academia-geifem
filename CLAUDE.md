@@ -11,7 +11,7 @@ arquitectura (leer antes de tocar código).
 |---|---|
 | Instalar | `pnpm install` |
 | Servidor de desarrollo | `pnpm dev` — http://localhost:3010 (puerto fijo, ver `BETTER_AUTH_URL`) |
-| Crear/actualizar un admin | `pnpm exec tsx scripts/create-admin.ts <email> <password> [nombre]` |
+| Crear/actualizar un admin | `pnpm exec tsx scripts/create-admin.ts <email> <password> [nombre] [admin\|superadmin\|instructor]` |
 | Build | `pnpm build` |
 | Typecheck | `pnpm exec tsc --noEmit` |
 | Migrar DB | `pnpm run db:migrate` |
@@ -32,9 +32,10 @@ si `docker` no se reconoce en PowerShell/Git Bash, ejecutar vía
 Next.js 16 (App Router) · TypeScript ~6.0.3 · Tailwind CSS v4 (identidad visual propia, sin
 shadcn instalado) · PostgreSQL 18 · Drizzle ORM 0.45.2 · better-auth 1.7.1 (email + contraseña) ·
 ePayco (checkout, credenciales cargadas y probadas contra la API real — ver
-arquitectura-academia § Checkout ePayco para el bloqueador de URL pública) · Docker Compose
-autoalojado para Postgres local. Pendiente de conectar: Alegra (facturación electrónica, vía el
-mismo patrón de conector que `geifem-agentes`), Resend (correo).
+arquitectura-academia § Checkout ePayco para el bloqueador de URL pública) · Alegra (facturación
+electrónica, conectada y verificada) · Resend (correo, código listo en `src/server/email.ts` —
+pendiente solo de que exista la cuenta real, `RESEND_API_KEY` es opcional mientras tanto) ·
+Docker Compose autoalojado para Postgres local.
 
 ## Entorno
 
@@ -45,6 +46,8 @@ mismo patrón de conector que `geifem-agentes`), Resend (correo).
 | `EPAYCO_PUBLIC_KEY`, `EPAYCO_PRIVATE_KEY` | sí | `src/server/epayco.ts` — crean la sesión de checkout (Apify) |
 | `EPAYCO_P_CUST_ID_CLIENTE`, `EPAYCO_P_KEY` | sí | `src/server/epayco.ts` — validan la firma del webhook, par de credenciales **distinto** al anterior |
 | `EPAYCO_TEST_MODE` | sí (default `true`) | pasa `test:` al widget de checkout |
+| `RESEND_API_KEY` | no (opcional) | `src/server/email.ts` — sin ella, los correos solo quedan logueados, no se envían |
+| `RESEND_FROM_EMAIL` | no (default GEIFEM Academy) | remitente de los correos transaccionales |
 
 `.env.example` está committed y sincronizado; `.env` con valores reales nunca lo está.
 

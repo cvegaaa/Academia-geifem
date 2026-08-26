@@ -28,6 +28,13 @@ const envSchema = z.object({
   // GEIFEM — ver arquitectura-academia § Facturación electrónica para cómo se obtuvieron.
   ALEGRA_ITEM_ID_CURSO: z.string().min(1),
   ALEGRA_NUMBER_TEMPLATE_ID: z.string().min(1),
+  // Resend (notificaciones por correo) — OPCIONAL a propósito: la cuenta todavía no existe
+  // (pendiente que GEIFEM la cree y verifique un dominio). Mientras no esté configurada,
+  // src/server/email.ts no envía nada y solo deja un log — ver arquitectura-academia §
+  // Notificaciones. En cuanto se agregue la key acá, los correos empiezan a salir solos, sin
+  // tocar código.
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().min(1).default("GEIFEM Academy <academy@geifem.com>"),
 });
 
 export function loadEnv() {

@@ -23,7 +23,7 @@ export default async function CursoPage({ params }: { params: Promise<{ slug: st
 
           <div className="mt-6 flex flex-wrap gap-6 text-sm text-ink-soft">
             <span className="flex items-center gap-2">
-              <Clock size={16} /> {course.duracionHoras} de contenido
+              <Clock size={16} /> {course.duracionHoras} horas de contenido
             </span>
             <span className="flex items-center gap-2">
               <Users size={16} /> {course.estudiantes} estudiantes

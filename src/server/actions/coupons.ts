@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import * as couponsData from "@/server/coupons";
 import type { Coupon } from "@/server/coupons";
+import { requireAdmin } from "@/server/actions/require-admin";
 
 export async function createCouponAction(input: {
   codigo: string;
@@ -11,17 +12,20 @@ export async function createCouponAction(input: {
   usosMaximos: number | null;
   fechaExpiracion: string | null;
 }): Promise<Coupon> {
+  await requireAdmin();
   const coupon = await couponsData.createCoupon(input);
   revalidatePath("/admin");
   return coupon;
 }
 
 export async function toggleCouponAction(id: string, activo: boolean): Promise<void> {
+  await requireAdmin();
   await couponsData.toggleCoupon(id, activo);
   revalidatePath("/admin");
 }
 
 export async function deleteCouponAction(id: string): Promise<void> {
+  await requireAdmin();
   await couponsData.deleteCoupon(id);
   revalidatePath("/admin");
 }

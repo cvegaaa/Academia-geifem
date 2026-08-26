@@ -9,7 +9,7 @@ const CARDS = [
   { icon: FileSpreadsheet, label: "Excel", className: "left-2 top-6 sm:left-6", delay: 0 },
   { icon: PlayCircle, label: "Video práctico", className: "right-2 top-0 sm:right-4", delay: 0.15 },
   { icon: Award, label: "Certificado", className: "left-6 bottom-4 sm:left-10", delay: 0.3 },
-  { icon: GraduationCap, label: "Academia", className: "right-6 bottom-8 sm:right-10", delay: 0.45 },
+  { icon: GraduationCap, label: "Aprendizaje", className: "right-6 bottom-8 sm:right-10", delay: 0.45 },
 ];
 
 export function HeroVisual() {

@@ -36,7 +36,8 @@ export interface Course {
   resumen: string;
   descripcion: string;
   precio: number;
-  duracionHoras: string;
+  /** Horas de contenido — entero, máx. 120 (tope regulatorio ETDH en Colombia). */
+  duracionHoras: number;
   estudiantes: number;
   categorias: string[];
   unidades: Unit[];

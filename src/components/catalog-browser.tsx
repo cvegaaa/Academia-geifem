@@ -143,7 +143,7 @@ function CourseGrid({
               </div>
               <div className="mt-4 flex items-center justify-between text-xs text-ink-soft">
                 <span className="flex items-center gap-1">
-                  <Clock size={14} /> {course.duracionHoras}
+                  <Clock size={14} /> {course.duracionHoras}h
                 </span>
                 <span className="flex items-center gap-1">
                   <Users size={14} /> {course.estudiantes}

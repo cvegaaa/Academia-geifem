@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -8,7 +9,6 @@ import {
   ChevronRight,
   Circle,
   FileText,
-  GraduationCap,
   PlayCircle,
 } from "lucide-react";
 import { Badge, Button, Card, ProgressBar } from "@/components/ui";
@@ -147,10 +147,8 @@ export function StudentCourseView({
       <header className="border-b border-border bg-surface px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-ink">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-              <GraduationCap size={20} />
-            </span>
-            Academia
+            <Image src="/brand/logo.png" alt="GEIFEM Academy" width={36} height={36} className="rounded-xl" />
+            GEIFEM Academy
           </Link>
           <div className="flex items-center gap-3 text-sm text-ink-soft">
             <span>{course.titulo}</span>

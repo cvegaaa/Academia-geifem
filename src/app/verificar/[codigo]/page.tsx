@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, GraduationCap, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui";
 import { getCertificateByCode } from "@/server/progress";
 
@@ -11,10 +12,8 @@ export default async function VerificarPage({ params }: { params: Promise<{ codi
     <div className="flex min-h-screen items-center justify-center bg-surface-muted px-6">
       <div className="w-full max-w-md">
         <Link href="/" className="mb-6 flex items-center justify-center gap-2 font-bold text-ink">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <GraduationCap size={20} />
-          </span>
-          Academia
+          <Image src="/brand/logo.png" alt="GEIFEM Academy" width={36} height={36} className="rounded-xl" />
+          GEIFEM Academy
         </Link>
 
         <Card className="text-center">

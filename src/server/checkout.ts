@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { courses, enrollments, payments, user } from "@/lib/db/schema";
 import { createInvoice, findOrCreateContact } from "@/server/alegra";
 import { incrementCouponUsage, validateCoupon } from "@/server/coupons";
+import { sendPaymentConfirmationEmail } from "@/server/email";
 
 export interface PendingCheckout {
   invoice: string;
@@ -137,6 +138,35 @@ export async function confirmCheckout(invoice: string, estado: "pagado" | "falli
       console.error(`No se pudo facturar el pago ${payment.id} en Alegra:`, err);
     }
   }
+
+  await notifyPaymentConfirmed(pendingPayments);
+}
+
+async function notifyPaymentConfirmed(pendingPayments: (typeof payments.$inferSelect)[]): Promise<void> {
+  const firstEnrollment = await db.query.enrollments.findFirst({
+    where: eq(enrollments.id, pendingPayments[0].enrollmentId),
+  });
+  if (!firstEnrollment) return;
+  const buyer = await db.query.user.findFirst({ where: eq(user.id, firstEnrollment.userId) });
+  if (!buyer) return;
+
+  const courseIds = await Promise.all(
+    pendingPayments.map(async (p) => {
+      const enrollment = await db.query.enrollments.findFirst({ where: eq(enrollments.id, p.enrollmentId) });
+      return enrollment?.courseId;
+    }),
+  );
+  const courseRows = await db.query.courses.findMany({
+    where: inArray(courses.id, courseIds.filter((id): id is string => !!id)),
+  });
+  const totalCents = pendingPayments.reduce((sum, p) => sum + p.montoCents, 0);
+
+  sendPaymentConfirmationEmail(
+    buyer.email,
+    buyer.name,
+    courseRows.map((c) => c.titulo),
+    Math.round(totalCents / 100),
+  ).catch((err) => console.error("No se pudo enviar el correo de confirmación de pago:", err));
 }
 
 async function invoicePayment(paymentId: string): Promise<void> {
