@@ -13,6 +13,11 @@ import { listTestimonials } from "@/server/testimonials";
 import { getBecasStats } from "@/server/becas";
 import { formatCOP } from "@/lib/utils";
 
+// Muestra catálogo, becas y estadísticas en vivo — nunca debe congelarse como página estática de
+// build (eso además rompe el build de producción, que no tiene ni debe tener credenciales reales
+// de base de datos disponibles en esa etapa).
+export const dynamic = "force-dynamic";
+
 const VALOR_PROPUESTA = [
   {
     icon: Clock,
