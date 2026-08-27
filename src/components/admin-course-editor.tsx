@@ -156,7 +156,7 @@ export function AdminCourseEditor({
               className="input"
             />
           </Field>
-          <Field label="Precio (COP)">
+          <Field label="Precio (COP, mínimo $5.000 — límite de ePayco)">
             <input
               type="number"
               value={draft.precio}

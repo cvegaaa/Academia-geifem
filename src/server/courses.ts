@@ -175,12 +175,19 @@ export async function createDraftCourse(): Promise<Course> {
 }
 
 const MAX_HORAS_ETDH = 120; // tope regulatorio Colombia para formación no formal (ETDH)
+const MIN_PRECIO_EPAYCO = 5000; // ePayco rechaza transacciones por debajo de $5.000 COP
 
 export async function saveCourse(course: Course): Promise<void> {
   if (course.duracionHoras < 0 || course.duracionHoras > MAX_HORAS_ETDH) {
     throw new Error(
       `La duración debe estar entre 0 y ${MAX_HORAS_ETDH} horas — es el máximo permitido para ` +
         "formación no formal (ETDH) en Colombia.",
+    );
+  }
+  if (course.precio > 0 && course.precio < MIN_PRECIO_EPAYCO) {
+    throw new Error(
+      `El precio debe ser de al menos $${MIN_PRECIO_EPAYCO.toLocaleString("es-CO")} COP — ePayco ` +
+        "rechaza transacciones por debajo de ese monto.",
     );
   }
 
