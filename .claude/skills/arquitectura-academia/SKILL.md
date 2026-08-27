@@ -724,5 +724,72 @@ trabajo por construir en la dirección equivocada. Para Academia, el orden es:
       inicia sesión y el tab "Becas GEIFEM" no aparece en absoluto en la barra lateral. Cuenta y
       beca de prueba eliminadas tras verificar.
 
+- [x] **Desplegado en producción real: `https://academia.geifem.com`.** Integrado al VPS
+      existente (`srv1871002`, el mismo que corre geifem.com, Chatwoot y n8n vía EasyPanel) por
+      decisión explícita del usuario — **fuera de la gestión de EasyPanel a propósito** (no
+      aparece en su dashboard), pero compartiendo la misma instancia de Traefik para
+      TLS/enrutamiento. Acceso vía SSH con una clave dedicada generada para esta sesión
+      (`claude-code-academia-deploy`, la privada nunca salió de este entorno).
+      **Arquitectura del despliegue:**
+      - `Dockerfile` nuevo (build multi-stage, salida `standalone` de Next.js —
+        `next.config.ts` con `output: "standalone"`). `pnpm-workspace.yaml` necesitó
+        `onlyBuiltDependencies: [esbuild]` explícito para que el build de Docker no fallara
+        (política de scripts de build de pnpm reciente) — y el Dockerfile debía copiar
+        `pnpm-workspace.yaml`, no solo `package.json`/`pnpm-lock.yaml`, para que esa
+        configuración se leyera en la etapa `deps`.
+      - `academia_db`: Postgres 18 dedicado, contenedor y volumen propios, red overlay privada
+        `academia_net` (nunca expuesta a internet).
+      - `academia_app`: servicio Swarm separado, conectado a `academia_net` (para hablar con la
+        DB) y a la red `easypanel` existente (para que Traefik lo alcance), `--limit-memory 512m`
+        para no volver a arriesgar la memoria del host.
+      - Enrutamiento: **etiquetas de Traefik a nivel de *contenedor* (`--container-label`), no de
+        servicio (`--label`)** — el Traefik de este VPS corre con el proveedor Docker en modo
+        clásico (sin `TRAEFIK_PROVIDERS_DOCKER_SWARMMODE`), así que solo lee labels del
+        contenedor real, nunca del `Spec.Labels` del servicio Swarm. Esto costó un primer intento
+        fallido (404) antes de encontrarlo — documentado para no repetirlo.
+      - Variables de entorno de producción: mismas credenciales de ePayco/Alegra que en
+        desarrollo (decisión explícita del usuario — "las credenciales quedarán iguales, no
+        habrá cambios por ahora"), pero `DATABASE_URL` apunta a `academia_db` por su nombre DNS
+        interno de Swarm, y se generaron `BETTER_AUTH_SECRET` y la contraseña de Postgres nuevos
+        y aleatorios (64 y 48 hex respectivamente) — nunca vistos en el chat, solo usados
+        directamente al crear los servicios. `BETTER_AUTH_URL=https://academia.geifem.com` —
+        esto es lo que finalmente desbloquea la prueba real de pagos con ePayco (rechazaba
+        `localhost`). `EPAYCO_TEST_MODE` se dejó en `true` — pasar a pagos reales es una decisión
+        aparte, no implícita en el despliegue.
+      - Migraciones y creación del superadmin en producción: **no vía túnel SSH exponiendo el
+        puerto de Postgres** (el clasificador de auto-modo bloqueó ese intento, correctamente —
+        hubiera expuesto la DB de producción a internet) — en su lugar, servicios Swarm
+        `--restart-condition=none` (job de un solo uso) corriendo dentro de `academia_net`,
+        montando el código por bind mount, sin credenciales expuestas fuera del VPS. Se
+        eliminaron después de correr.
+      **Bug real encontrado y corregido en el camino:** `/` (la landing) se pre-renderizaba como
+      página estática en el build de producción, lo que exigía una conexión real a la base de
+      datos durante `pnpm build` — el Dockerfile usa credenciales placeholder a propósito en esa
+      etapa, así que el build fallaba. Nunca se había notado porque en local siempre había un
+      Postgres de desarrollo real y alcanzable durante `pnpm build`. Corregido con
+      `export const dynamic = "force-dynamic"` en `src/app/page.tsx` — es lo correcto de todas
+      formas, la landing muestra catálogo/becas/testimonios en vivo, nunca debería congelarse en
+      una versión del momento del build.
+      **Incidente real durante el despliegue:** el primer intento de `docker build` (sin límite
+      de memoria) agotó la RAM del VPS (que ya estaba muy ajustada, ~3.8GB con seis stacks
+      corriendo encima) y **tumbó el servidor completo** — geifem.com, Chatwoot y n8n
+      inaccesibles por varios minutos hasta que el usuario hizo un reinicio forzado desde el
+      panel de su proveedor de VPS (no EasyPanel, que no sirve para esto si el sistema no
+      responde en absoluto). Se agregó swap de 4GB al VPS como red de seguridad permanente, y
+      todo build posterior se corrió con `docker build --memory=1500m --memory-swap=3000m` — con
+      eso el segundo intento (después de corregir también el bug de `/`) terminó sin sobresaltos,
+      memoria estable durante todo el proceso.
+      **Se subió a GitHub por primera vez en esta sesión** — había meses de trabajo sin commitear
+      (`github.com/cvegaaa/Academia-geifem`, rama `main`), confirmado y autorizado explícitamente
+      por el usuario antes de hacer push.
+      Verificado en el navegador contra la URL real de producción: landing carga con contenido y
+      certificado TLS válido (Let's Encrypt, vía el resolver ya configurado en el Traefik
+      compartido), login de superadmin funciona, panel admin responde. Los 13 servicios del VPS
+      (los 3 de Academia + los 10 preexistentes) reportan `1/1` réplicas sanas.
+      **Sigue pendiente** (no parte de esta ronda): cargar el catálogo real de cursos y al menos
+      un testimonio desde `/admin` en producción (la base de datos de producción está
+      deliberadamente vacía, igual que siempre se dejó la de desarrollo); decidir si se pasa
+      `EPAYCO_TEST_MODE` a `false` para aceptar pagos reales.
+
 **Actualizar esta sección y las anteriores a medida que se completen fases — no dejarla
 desactualizada.**
